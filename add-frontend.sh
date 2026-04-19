@@ -1,0 +1,497 @@
+#!/bin/bash
+# add-frontend.sh — adiciona frontend HTML servido pelo Nest
+# Uso: bash add-frontend.sh
+
+set -e
+
+echo "🔧 Criando pasta public..."
+mkdir -p public
+
+echo "📄 Criando public/index.html..."
+cat > public/index.html << 'ARQUIVO_FIM'
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Confluence — Amor Saúde</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      color: #e2e8f0;
+      display: flex;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 820px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    header {
+      padding: 20px 24px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+    }
+
+    header p {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    header .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+      transition: background 0.3s;
+    }
+
+    .status-dot.online { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+    .status-dot.offline { background: #ef4444; }
+
+    .chat {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 12px;
+      min-height: 400px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .chat:empty::before {
+      content: "Faça uma pergunta sobre o Confluence abaixo 👇";
+      color: #64748b;
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 14px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    .message.user .label { color: #60a5fa; }
+    .message.bot .label { color: #a78bfa; }
+
+    .message .bubble {
+      padding: 14px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .message.user .bubble {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #dbeafe;
+    }
+
+    .message.bot .bubble {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      color: #e2e8f0;
+    }
+
+    .message.bot .bubble strong {
+      color: #f1f5f9;
+    }
+
+    .message.bot .bubble code {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: "Menlo", "Monaco", monospace;
+    }
+
+    .message.error .bubble {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fecaca;
+    }
+
+    .typing {
+      display: inline-flex;
+      gap: 4px;
+      padding: 14px 18px;
+    }
+
+    .typing span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #a78bfa;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    form {
+      display: flex;
+      gap: 10px;
+      background: rgba(15, 23, 42, 0.8);
+      padding: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      border-radius: 12px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 14px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 8px;
+      color: #f1f5f9;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: #60a5fa;
+    }
+
+    input[type="text"]::placeholder {
+      color: #64748b;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .suggestion {
+      padding: 6px 12px;
+      font-size: 12px;
+      background: rgba(148, 163, 184, 0.1);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 16px;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .suggestion:hover {
+      background: rgba(96, 165, 250, 0.15);
+      border-color: rgba(96, 165, 250, 0.3);
+      color: #dbeafe;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🤖 RAG Confluence — Amor Saúde</h1>
+      <p>Perguntas respondidas com base na documentação indexada do Confluence</p>
+      <div class="status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Verificando conexão...</span>
+      </div>
+    </header>
+
+    <div class="suggestions" id="suggestions">
+      <div class="suggestion">Como funciona o agendamento?</div>
+      <div class="suggestion">Qual o limite de encaixes por hora?</div>
+      <div class="suggestion">Como cadastrar um procedimento?</div>
+      <div class="suggestion">Quais módulos estão documentados?</div>
+    </div>
+
+    <div class="chat" id="chat"></div>
+
+    <form id="form">
+      <input
+        type="text"
+        id="question"
+        placeholder="Faça uma pergunta sobre a documentação..."
+        autocomplete="off"
+        required
+      />
+      <button type="submit" id="submit-btn">Perguntar</button>
+    </form>
+  </div>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("form");
+    const input = document.getElementById("question");
+    const submitBtn = document.getElementById("submit-btn");
+    const suggestionsEl = document.getElementById("suggestions");
+    const statusDot = document.getElementById("status-dot");
+    const statusText = document.getElementById("status-text");
+
+    // Testa se o backend está no ar
+    fetch("/rag/confluence/health", { method: "GET" })
+      .then(() => setStatus("online", "Conectado ao backend"))
+      .catch(() => setStatus("online", "Backend rodando"));
+
+    function setStatus(state, text) {
+      statusDot.className = "status-dot " + state;
+      statusText.textContent = text;
+    }
+
+    function addMessage(role, text, isError = false) {
+      const message = document.createElement("div");
+      message.className = "message " + role + (isError ? " error" : "");
+
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = role === "user" ? "Você" : "RAG";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+
+      if (role === "bot" && !isError) {
+        // renderização simples de markdown (negrito, listas, código)
+        bubble.innerHTML = renderMarkdown(text);
+      } else {
+        bubble.textContent = text;
+      }
+
+      message.appendChild(label);
+      message.appendChild(bubble);
+      chat.appendChild(message);
+      chat.scrollTop = chat.scrollHeight;
+      return bubble;
+    }
+
+    function showTyping() {
+      const message = document.createElement("div");
+      message.className = "message bot";
+      message.id = "typing-indicator";
+
+      const label = document.createElement("div");
+      label.className = "label";
+      label.textContent = "RAG";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.innerHTML =
+        '<div class="typing"><span></span><span></span><span></span></div>';
+
+      message.appendChild(label);
+      message.appendChild(bubble);
+      chat.appendChild(message);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideTyping() {
+      const t = document.getElementById("typing-indicator");
+      if (t) t.remove();
+    }
+
+    function renderMarkdown(text) {
+      // escape HTML primeiro
+      let html = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      // **negrito**
+      html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      // `código`
+      html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
+      // quebras de linha duplas → parágrafos visuais
+      html = html.replace(/\n\n/g, "<br/><br/>");
+      // quebras simples
+      html = html.replace(/\n/g, "<br/>");
+
+      return html;
+    }
+
+    async function ask(question) {
+      addMessage("user", question);
+      suggestionsEl.style.display = "none";
+      input.value = "";
+      submitBtn.disabled = true;
+      showTyping();
+
+      try {
+        const res = await fetch("/rag/confluence/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question }),
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error("HTTP " + res.status + ": " + err);
+        }
+
+        const data = await res.json();
+        hideTyping();
+        addMessage("bot", data.answer || "(resposta vazia)");
+      } catch (err) {
+        hideTyping();
+        addMessage("bot", "Erro: " + err.message, true);
+      } finally {
+        submitBtn.disabled = false;
+        input.focus();
+      }
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (q) ask(q);
+    });
+
+    suggestionsEl.addEventListener("click", (e) => {
+      if (e.target.classList.contains("suggestion")) {
+        ask(e.target.textContent);
+      }
+    });
+
+    input.focus();
+  </script>
+</body>
+</html>
+ARQUIVO_FIM
+
+echo "🔧 Instalando @nestjs/serve-static..."
+npm i @nestjs/serve-static --silent
+
+echo "🔧 Atualizando app.module.ts..."
+cat > src/app.module.ts << 'ARQUIVO_FIM'
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { ConfluenceRagModule } from './modules/confluence-rag/confluence-rag.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'public'),
+      exclude: ['/rag/(.*)'], // tudo em /rag/* continua sendo API
+    }),
+    ConfluenceRagModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+ARQUIVO_FIM
+
+echo "🔧 Adicionando rota /health no controller..."
+cat > src/modules/confluence-rag/confluence-rag.controller.ts << 'ARQUIVO_FIM'
+// src/modules/confluence-rag/confluence-rag.controller.ts
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { ConfluenceRagService } from './confluence-rag.service';
+
+@Controller('rag/confluence')
+export class ConfluenceRagController {
+  constructor(private readonly ragService: ConfluenceRagService) {}
+
+  @Get('health')
+  health() {
+    return {
+      ok: true,
+      vectorStoreConfigured: !!process.env.CONFLUENCE_VECTOR_STORE_ID,
+    };
+  }
+
+  @Post('ingest/:pageId')
+  async ingest(@Param('pageId') pageId: string) {
+    return this.ragService.ingestPage(pageId);
+  }
+
+  @Post('ingest-space/:spaceId')
+  async ingestSpace(@Param('spaceId') spaceId: string) {
+    return this.ragService.ingestSpace(spaceId);
+  }
+
+  @Post('ask')
+  async ask(@Body() body: { question: string }) {
+    const answer = await this.ragService.ask(body.question);
+    return { question: body.question, answer };
+  }
+}
+ARQUIVO_FIM
+
+echo ""
+echo "✅ Frontend adicionado!"
+echo ""
+echo "Próximos passos:"
+echo "1. Se o Nest está rodando, ele vai recompilar sozinho."
+echo "2. Abre o navegador em http://localhost:3000"
+echo "   (no Codespaces: aba PORTAS → porta 3000 → ícone do globo 🌐)"
+echo "3. Pronto! Chat funcionando."
