@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AiChatModule } from "./modules/ai-chat/ai-chat.module";
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -7,11 +8,11 @@ import { AppService } from './app.service';
 import { ConfluenceRagModule } from './modules/confluence-rag/confluence-rag.module';
 
 @Module({
-  imports: [
+  imports: [AiChatModule, 
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'public'),
-      exclude: ['/rag/(.*)'], // tudo em /rag/* continua sendo API
+      exclude: ['/rag/{*splat}', '/ai/{*splat}'], // tudo em /rag/* continua sendo API
     }),
     ConfluenceRagModule,
   ],
